@@ -1,12 +1,10 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const cors = require('cors')
 require('dotenv').config()
 const port = process.env.PORT || 5000;
-// LsWm74CvnOJ6UQQb
-// bistro-boss
-// db: BistroBossDB
+
 //middleware
 app.use(cors());
 app.use(express.json())
@@ -31,6 +29,56 @@ async function run() {
     const database = client.db('BistroBossDB');
     const menuCollection = database.collection('menu');
     const reviewCollection = database.collection('reviews');
+    const cartCollection = database.collection('carts');
+    const userCollection = database.collection('users');
+
+    //user related api
+    app.get('/users', async(req, res)=>{
+      const result=await userCollection.find().toArray()
+      res.send(result);
+    })
+
+    app.post('/users', async(req, res)=>{
+      const user=req.body;
+      const query={email: user.email}
+      const existingUser=await userCollection.findOne(query)
+      if (existingUser) {
+        return res.send({message:'user already exists'})
+      }
+      const result=await userCollection.insertOne(user)
+      res.send(result)
+    })
+
+    app.patch(`/users/admin/:id`, async(req, res)=>{
+      const id=req.params.id
+      const query={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          role:'admin'
+        }
+      }
+      const result= await userCollection.updateOne(query, updateDoc)
+      res.send(result);
+    })
+
+    app.patch(`/user/admin/:id`, async(req, res)=>{
+      const id=req.params.id
+      const query={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          role:'user'
+        }
+      }
+      const result= await userCollection.updateOne(query, updateDoc)
+      res.send(result);
+    })
+
+    app.delete(`/users/:id`, async(req,res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)};
+      const result=await userCollection.deleteOne(query);
+      res.send(result)
+    })
 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray();
@@ -51,6 +99,28 @@ async function run() {
       const result = await reviewCollection.find().toArray();
       res.send(result);
     })
+
+    //cart collection
+    app.post('/carts', async(req, res)=>{
+      const cartItem=req.body;
+      const result=await cartCollection.insertOne(cartItem);
+      res.send(result)
+    })
+
+    app.get('/carts',async(req, res)=>{
+      const email=req.query.email;
+      const query={email: email}
+      const result=await cartCollection.find(query).toArray()
+      res.send(result);
+    })
+
+    app.delete(`/carts/:id`, async(req, res)=>{
+      const id=req.params.id;
+      const query={_id: new ObjectId(id)}
+      const result=await cartCollection.deleteOne(query);
+      res.send(result)
+    })
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
